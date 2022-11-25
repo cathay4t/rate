@@ -1,28 +1,39 @@
+// SPDX-License-Identifier: Apache-2.0
+
 use bytesize::ByteSize;
-use clap::{App, Arg};
 use nispor::NetState;
 use std::collections::HashMap;
 use std::io::Read;
 
-const INTERVAL: u64 = 500;
+const INTERVAL: u64 = 1000;
 
 fn main() {
-    let matches = App::new("rate")
+    let matches = clap::Command::new("rate")
         .version("1.0")
         .author("Gris Ge <cnfourt@gmail.com>")
         .about("Show the realtime network speed")
         .arg(
-            Arg::with_name("NIC")
+            clap::Arg::new("NIC")
                 .help("Show specific network interface only")
+                .action(clap::ArgAction::Set)
                 .index(1),
         )
-        .arg(Arg::with_name("repeat").short("t").help("Repeatly"))
+        .arg(
+            clap::Arg::new("repeat")
+                .short('t')
+                .action(clap::ArgAction::SetTrue)
+                .help("Repeat"),
+        )
         .get_matches();
 
-    let net_state = NetState::retrieve().unwrap();
-    if let Some(iface_name) = matches.value_of("NIC") {
+    let mut filter = nispor::NetStateFilter::minimum();
+    let iface_filter = nispor::NetStateIfaceFilter::minimum();
+    filter.iface = Some(iface_filter);
+    let net_state = NetState::retrieve_with_filter(&filter).unwrap();
+
+    if let Some(iface_name) = matches.get_one::<String>("NIC") {
         if net_state.ifaces.contains_key(iface_name) {
-            if matches.is_present("repeat") {
+            if matches.get_flag("repeat") {
                 loop {
                     show_result(iface_name, get_net_speed(iface_name));
                 }
@@ -36,7 +47,7 @@ fn main() {
             );
             std::process::exit(1);
         }
-    } else if matches.is_present("repeat") {
+    } else if matches.get_flag("repeat") {
         loop {
             show_all(&net_state);
         }

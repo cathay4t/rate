@@ -29,29 +29,31 @@ fn main() {
     let mut filter = nispor::NetStateFilter::minimum();
     let iface_filter = nispor::NetStateIfaceFilter::minimum();
     filter.iface = Some(iface_filter);
-    let net_state = NetState::retrieve_with_filter(&filter).unwrap();
 
     if let Some(iface_name) = matches.get_one::<String>("NIC") {
-        if net_state.ifaces.contains_key(iface_name) {
-            if matches.get_flag("repeat") {
-                loop {
-                    show_result(iface_name, get_net_speed(iface_name));
-                }
-            } else {
-                show_result(iface_name, get_net_speed(iface_name));
-            }
-        } else {
+        if !std::path::Path::new(&format!("/sys/class/net/{iface_name}"))
+            .exists()
+        {
             eprintln!(
                 "FAIL: Specific interface {} does not exists",
                 iface_name
             );
             std::process::exit(1);
         }
+        if matches.get_flag("repeat") {
+            loop {
+                show_result(iface_name, get_net_speed(iface_name));
+            }
+        } else {
+            show_result(iface_name, get_net_speed(iface_name));
+        }
     } else if matches.get_flag("repeat") {
+        let net_state = NetState::retrieve_with_filter(&filter).unwrap();
         loop {
             show_all(&net_state);
         }
     } else {
+        let net_state = NetState::retrieve_with_filter(&filter).unwrap();
         show_all(&net_state);
     }
 }
